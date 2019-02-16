@@ -13,7 +13,7 @@ import Foundation
 import CoreGraphics
 
 #if !os(OSX)
-    import UIKit
+import UIKit
 #endif
 
 @objc(ChartXAxisRenderer)
@@ -173,15 +173,15 @@ open class XAxisRenderer: AxisRendererBase
             else { return }
         
         #if os(OSX)
-            let paraStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
+        let paraStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
         #else
-            let paraStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
+        let paraStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
         #endif
         paraStyle.alignment = .center
         
         let labelAttrs: [NSAttributedString.Key : Any] = [NSAttributedString.Key.font: xAxis.labelFont,
-            NSAttributedString.Key.foregroundColor: xAxis.labelTextColor,
-            NSAttributedString.Key.paragraphStyle: paraStyle]
+                                                          NSAttributedString.Key.foregroundColor: xAxis.labelTextColor,
+                                                          NSAttributedString.Key.paragraphStyle: paraStyle]
         let labelRotationAngleRadians = xAxis.labelRotationAngle.DEG2RAD
         
         let centeringEnabled = xAxis.isCenterAxisLabelsEnabled
@@ -342,29 +342,16 @@ open class XAxisRenderer: AxisRendererBase
     {
         guard
             let xAxis = self.axis as? XAxis,
-            let transformer = self.transformer
+            let transformer = self.transformer,
+            !xAxis.limitLines.isEmpty
             else { return }
-        
-        var limitLines = xAxis.limitLines
-        
-        if limitLines.count == 0
-        {
-            return
-        }
         
         let trans = transformer.valueToPixelMatrix
         
         var position = CGPoint(x: 0.0, y: 0.0)
         
-        for i in 0 ..< limitLines.count
+        for l in xAxis.limitLines where l.isEnabled
         {
-            let l = limitLines[i]
-            
-            if !l.isEnabled
-            {
-                continue
-            }
-            
             context.saveGState()
             defer { context.restoreGState() }
             
@@ -407,55 +394,55 @@ open class XAxisRenderer: AxisRendererBase
     {
         
         let label = limitLine.label
-        
-        // if drawing the limit-value label is enabled
-        if limitLine.drawLabelEnabled && label.count > 0
-        {
+        guard limitLine.drawLabelEnabled, !label.isEmpty else {
+            return
+        }
+
             let labelLineHeight = limitLine.valueFont.lineHeight
             
             let xOffset: CGFloat = limitLine.lineWidth + limitLine.xOffset
-            
-            if limitLine.labelPosition == .rightTop
-            {
-                ChartUtils.drawText(context: context,
-                    text: label,
-                    point: CGPoint(
-                        x: position.x + xOffset,
-                        y: viewPortHandler.contentTop + yOffset),
-                    align: .left,
-                    attributes: [NSAttributedString.Key.font: limitLine.valueFont, NSAttributedString.Key.foregroundColor: limitLine.valueTextColor])
-            }
-            else if limitLine.labelPosition == .rightBottom
-            {
-                ChartUtils.drawText(context: context,
-                    text: label,
-                    point: CGPoint(
-                        x: position.x + xOffset,
-                        y: viewPortHandler.contentBottom - labelLineHeight - yOffset),
-                    align: .left,
-                    attributes: [NSAttributedString.Key.font: limitLine.valueFont, NSAttributedString.Key.foregroundColor: limitLine.valueTextColor])
-            }
-            else if limitLine.labelPosition == .leftTop
-            {
-                ChartUtils.drawText(context: context,
-                    text: label,
-                    point: CGPoint(
-                        x: position.x - xOffset,
-                        y: viewPortHandler.contentTop + yOffset),
-                    align: .right,
-                    attributes: [NSAttributedString.Key.font: limitLine.valueFont, NSAttributedString.Key.foregroundColor: limitLine.valueTextColor])
-            }
-            else
-            {
-                ChartUtils.drawText(context: context,
-                    text: label,
-                    point: CGPoint(
-                        x: position.x - xOffset,
-                        y: viewPortHandler.contentBottom - labelLineHeight - yOffset),
-                    align: .right,
-                    attributes: [NSAttributedString.Key.font: limitLine.valueFont, NSAttributedString.Key.foregroundColor: limitLine.valueTextColor])
-            }
-        }
-    }
+            let attributes: [NSAttributedString.Key : Any] = [
+                .font : limitLine.valueFont,
+                .foregroundColor : limitLine.valueTextColor
+            ]
 
+            let (point, align): (CGPoint, NSTextAlignment)
+            switch limitLine.labelPosition {
+            case .topRight:
+                point = CGPoint(
+                    x: position.x + xOffset,
+                    y: viewPortHandler.contentTop + yOffset
+                )
+                align = .left
+
+            case .bottomRight:
+                point = CGPoint(
+                    x: position.x + xOffset,
+                    y: viewPortHandler.contentBottom - labelLineHeight - yOffset
+                )
+                align = .left
+
+            case .topLeft:
+                point = CGPoint(
+                    x: position.x - xOffset,
+                    y: viewPortHandler.contentTop + yOffset
+                )
+                align = .right
+
+            case .bottomLeft:
+                point = CGPoint(
+                    x: position.x - xOffset,
+                    y: viewPortHandler.contentBottom - labelLineHeight - yOffset
+                )
+                align = .right
+            }
+
+            ChartUtils.drawText(
+                context: context,
+                text: label,
+                point: point,
+                align: align,
+                attributes: attributes
+            )
+    }
 }
